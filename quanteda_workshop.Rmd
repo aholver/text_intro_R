@@ -1,0 +1,500 @@
+---
+title: "Next Steps in R: Introduction to Text Analysis"
+author: "Arne Holverscheid"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+fontsize: 11pt
+geometry: margin=1in
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# Welcome
+
+In this workshop, you will learn how to analyze text data using the [`quanteda`](https://quanteda.io) package.  
+We are using a sample dataset of **UK political party manifestos** (from 1945 to 2005) available in the `quanteda.corpora` package.
+
+In this session you will:
+- Install and load required packages
+- Preprocess and tokenize the text
+- Build a Document-Feature Matrix (DFM)
+- Perform descriptive analysis of word usage by political party
+- Carry out a simple sentiment analysis using a dictionary-based approach
+- Visualize the sentiment results
+
+This script is designed as a step-by-step guide. Each exercise asks you to write code that produces working output.
+
+---
+
+# Step 1: Install and Load Packages
+
+Run the following code **once** to install all required packages (commented for PDF users):
+
+```{r install-packages, eval=FALSE}
+# Install devtools if needed
+if (!requireNamespace("devtools", quietly = TRUE)) {
+  install.packages("devtools")
+}
+
+# Install main quanteda packages
+install.packages("quanteda")
+install.packages("quanteda.textstats")
+install.packages("quanteda.textplots")
+
+# Install quanteda.corpora from GitHub
+devtools::install_github("quanteda/quanteda.corpora")
+```
+
+Now load all packages:
+
+```{r load-packages}
+library(quanteda)
+library(quanteda.textstats)
+library(quanteda.textplots)
+library(quanteda.corpora)
+
+library(dplyr)
+library(ggplot2)
+```
+
+---
+
+# Step 2: Load the UK Manifestos Corpus
+
+We’ll use the `data_corpus_ukmanifestos` corpus, which contains the manifestos of political parties in the United Kingdom. The corpus is available as an example data set from `quanteda`.
+
+A corpus is simply a collection of texts, often with additional metadata like author, date, or document type. In `quanteda`, a corpus is stored in a special object class that makes it easy to tokenize, filter, and analyze (more on that later). It’s useful to start with a corpus because it keeps the original text and document-level variables bundled together for analysis. Later steps in text processing will use this object as input.
+
+While `quanteda` functions are designed to work seamlessly with a corpus object, most people will in practice begin with a data frame structure as that is how most data is stored (e.g. loaded from a .csv file). Such a data frame can be converted into a corpus using `corpus()`. 
+
+To better understand this process, here’s a simple example. First we create a basic toy data.frame, and then we convert it into a `quanteda` corpus. You can think of the corpus as a wrapper that combines your raw text and its metadata in a structured way. We can extract the underlying text or other variables from a corpus using functions like `docvars()`.
+
+```{r toy-data-to-corpus}
+# A simple text data frame
+toy_df <- data.frame(
+  id = c("doc1", "doc2"),
+  text = c("I love data analysis.", "R is a great tool for text mining."),
+  author = c("Alice", "Bob"),
+  year = c(2016, 2024),
+  stringsAsFactors = FALSE
+)
+
+# View the raw data frame
+toy_df
+
+# Convert to a quanteda corpus
+toy_corpus <- corpus(toy_df, 
+                     text_field = "text" #this tells the function what column contains the actual text 
+                     )
+
+# View a summary of the corpus
+summary(toy_corpus)
+
+# View the metadata (document variables)
+docvars(toy_corpus)
+
+```
+
+Let's now load and check out the main corpus we will be working with.
+
+```{r load-data}
+# load the data
+data("data_corpus_ukmanifestos")
+
+# have a look at the first couple of rows
+head(data_corpus_ukmanifestos)
+```
+
+When we load the data from the package, it already loads it as a `corpus` object. Of course more often than not, we will have some sort of tabular data, like in a CSV file. Let's re-create that to make it more realistic:
+
+```{r re-shape data}
+
+# Convert the corpus to a plain data frame with text + metadata
+manifestos_df <- data.frame(
+  doc_id = names(data_corpus_ukmanifestos),
+  text = as.character(data_corpus_ukmanifestos),
+  docvars(data_corpus_ukmanifestos),
+  row.names = NULL
+)
+
+```
+
+**Exercise 1 (Code Task):**  
+Now we have tabular data in a data frame, similar to most data you will find "in the wild". The first step, as simple as it might seem, is always to visually explore your text data. Inspect what variables we have and what the texts looks like. You might also want to read some of it to get a sense. 
+
+
+*HINT:* You can use a variety of functions here, but it might also work to simply look at the dataframe using `View()`. `head()` or `str()` also work!
+
+```{r exercise-1}
+
+# Visually inspect your data
+
+
+```
+
+
+
+---
+
+# Step 3: Preprocessing and Tokenization
+
+Next, we perform what is usually referred to as pre-processing, which involves altering the formatting of the text to make it useful for further analysis. 
+
+At this point, we will transform our tabular data frame into a `corpus` object, which will allow us to work with it more easily. 
+
+```{r corpus-creation}
+
+corpus_manifestos <- corpus(manifestos_df, text_field = "text")
+
+```
+
+We also need to clean the text to set it up for further analysis. The first major step is tokenization. Tokenization is the process of breaking up a piece of text into smaller units called tokens — usually individual words. We then clean those individual tokens up by:
+
+- Removing punctuation
+- Lowercasing all text (ensures that "cat" and "Cat" are treated as the same word)
+- Removing stopwords (stopwords are words that are very common and not interesting for the analysis, like "too" or "was")
+- Stemming (reduces words to their root form, e.g., “running”, “runs”, and “ran” become “run”)
+
+
+```{r preprocessing}
+tokens_manifestos <- tokens(corpus_manifestos,
+                            remove_punct = TRUE, #remove punctuation
+                            remove_numbers = TRUE) %>% #remove numerical symbols
+  tokens_tolower() %>% #make everything lower case
+  tokens_remove(stopwords("en")) %>% #remove stopwords
+  tokens_wordstem() #stemming
+
+tokens_manifestos[[1]] %>% head()
+manifestos_df$text[1] %>% head()
+```
+
+**Exercise 2 (Code Task):**  
+Let's double check our tokenization to see how it works. Check out the first 20 tokens of a speech and compare it to the original text.
+
+```{r exercise-2}
+
+# View the first 20 tokens 
+
+
+# Original text
+
+```
+
+
+
+
+---
+
+# Step 4: Create a Document-Feature Matrix (DFM)
+
+Once we’ve tokenized and cleaned the text, we need to convert it into a structure that can be analyzed numerically, which is the Document-Feature Matrix (DFM). 
+
+A Document-Feature Matrix (DFM) is a table where:
+
+- Each row represents a document (e.g., a single manifesto),
+
+- Each column represents a feature (usually a word),
+
+- Each cell contains the number of times that word appears in that document.
+
+This is the key structure for most text analysis methods — including frequency counts, sentiment scoring, classification, and topic modeling. It's very similar to a spreadsheet, but built specifically for working with large amounts of text.
+
+```{r create-dfm}
+# Build a DFM from the cleaned tokenized text
+dfm_manifestos <- dfm(tokens_manifestos)
+
+# Check how many documents and unique words (features) we have
+dim(dfm_manifestos)
+
+# View the top 10 most frequent words in the whole corpus
+topfeatures(dfm_manifestos, 10)
+```
+
+
+---
+
+# Step 5: Descriptive Analysis
+
+Now that we have a Document-Feature Matrix (DFM), we can begin to ask questions like:
+
+- What are the most common words used overall?
+
+- Do different parties use different language?
+
+- How does word usage vary across time?
+
+To answer these questions, we can use the `quanteda` package functions to group our DFM by a variable — for example, Party — and compare word frequencies across those groups.
+
+This is a great way to explore patterns or stylistic differences in how different political parties communicate.
+
+```{r descriptive-analysis}
+
+# Grouping variable: Party
+group_var <- manifestos_df$Party
+
+# Get top 10 features grouped by Party
+freq_by_party <- textstat_frequency(dfm_manifestos, n = 10, groups = group_var)
+
+
+
+```
+
+Now let's plot this:
+
+```{r plot-descriptive}
+
+# let's exclude some smaller parties and just look at the two main parties so the plot is nicer
+frequency_df_parties <- freq_by_party %>%
+    filter(group %in% c("Con", "Lab")) 
+
+frequency_df_parties %>% 
+    ggplot(aes(x = reorder(feature, frequency), y = frequency, fill = group)) +
+    geom_col(show.legend = FALSE) +
+    coord_flip() +
+    facet_wrap(~ group, scales = "free_y") +
+    labs(title = "Top 10 Words by Party", x = "Word", y = "Frequency") +
+    theme_minimal()
+
+```
+
+**Exercise 3 (Code Task):**  
+Group the DFM by `Year` and list the top 10 terms across all years.
+
+
+
+**Exercise 3 (Code Task):**  
+Group the DFM by `Year` and list the top 10 terms across all years.
+
+```{r exercise-3}
+
+# Change the grouping variable to Year
+
+
+# Get top 10 features grouped by Year
+
+
+# let's look at a maximum of four years of your choice so the plot is more legible
+
+
+# Plot it
+
+
+```
+
+
+---
+
+# Step 6: Sentiment Analysis Using a Dictionary
+
+Sentiment analysis is a common and very useful tool in text analysis. It is the task of identifying whether a piece of text expresses a **positive**, **negative**, or **neutral** tone.
+
+In our case, we’ll perform what is called **dictionary-based sentiment analysis**, which means we compare the words in each document to a predefined list of positive and negative terms. This is a fast, transparent method — and it doesn’t require any more advanced tools such as machine learning.
+
+The `quanteda` package includes the Lexicoder Sentiment Dictionary (LSD2015). This is a built-in sentiment dictionary, developed by political scientists for analyzing the tone of political texts like speeches, manifestos, or press releases. Basically, it just consits of two lists of words:
+
+- A list of words associated with positive sentiment
+
+- A list associated with negative sentiment
+
+Sentiment analysis is quite simple:
+
+1. For each document, count how many words match each list
+
+2. Subtract negative from positive to get a polarity score
+
+- A higher polarity score = more positive
+- A lower polarity score = more negative
+
+```{r sentiment-lookup}
+# Load the dictionary
+dict_sentiment <- data_dictionary_LSD2015
+
+# Apply the dictionary to the DFM
+dfm_sentiment <- dfm_lookup(dfm_manifestos, dictionary = dict_sentiment)
+
+# View first few rows of sentiment word counts
+head(dfm_sentiment)
+```
+
+This gives us a new DFM where each document has just two columns:
+
+- One for the number of positive words
+
+- One for negative words
+
+```{r sentiment-dataframe}
+# Convert the sentiment DFM to a data frame for plotting and further analysis
+sentiment_df <- convert(dfm_sentiment, to = "data.frame")
+
+# Add metadata back in (e.g., Party, Year)
+sentiment_df$Party <- manifestos_df$Party
+sentiment_df$Year  <- manifestos_df$Year
+
+# Calculate polarity score
+sentiment_df$polarity <- sentiment_df$positive - sentiment_df$negative
+
+# View results
+head(sentiment_df)
+
+```
+
+---
+
+# Step 7: Visualize Sentiment
+
+We can use a boxplot to observe polarity like so: 
+
+```{r plot-sentiment}
+
+# first, we normalize the score by document length so we can compare
+
+# Count total tokens per document from the original DFM
+sentiment_df$total_tokens <- rowSums(dfm_manifestos)
+
+# Normalize polarity by document length
+sentiment_df$polarity_normalized <- sentiment_df$polarity / sentiment_df$total_tokens
+
+# let's use only Labour and Conservatives for a boxplot
+sentiment_df %>% filter(Party %in% c("Con", "Lab")) %>% 
+    ggplot(., aes(x = Party, y = polarity_normalized, fill = Party)) +
+    geom_boxplot() +
+    geom_jitter(width = 0.2, alpha = 0.5) +
+    labs(title = "Sentiment Polarity by Party",
+         x = "Party",
+         y = "Polarity (Positive - Negative)") +
+    theme_minimal()
+```
+
+
+This is already quite interesting! We can see that the net positivity is more variable in Conservative Party speeches. 
+
+**Exercise 4 (Code Task):**  
+To get a better idea of how polarity shifted over time, let's plot the yearly polarity scores of the Labour and Conservative parties.
+
+**Hint:** Filter the data frame and use ggplot to ploint the points and line based on the year and normalized polarity score. 
+
+```{r exercise-4}
+
+
+```
+
+
+
+Finally, as an option, we can color the background to see at which point each party was in power, so that we can observe if there is a pattern to their sentiment. 
+
+```{r sentiment-pattern}
+# Government periods (UK general elections + ruling party)
+gov_periods <- data.frame(
+  start = c(1945, 1951, 1964, 1970, 1974, 1979, 1997),
+  end   = c(1951, 1964, 1970, 1974, 1979, 1997, 2010),
+  party = c("Lab", "Con", "Lab", "Con", "Lab", "Con", "Lab")
+)
+
+gov_periods$color <- ifelse(gov_periods$party == "Lab", "#d50000", "#0056A0")
+
+sentiment_df %>%
+  filter(Party %in% c("Con", "Lab")) %>%
+  ggplot(aes(x = Year, y = polarity_normalized, color = Party)) +
+  
+  # Add shaded rectangles for government periods
+  geom_rect(
+    data = gov_periods,
+    inherit.aes = FALSE,
+    aes(xmin = start, xmax = end, ymin = -Inf, ymax = Inf, fill = party),
+    alpha = 0.1
+  ) +
+
+  # Party sentiment data
+  geom_point(alpha = 0.6) +
+  geom_line() +
+  
+  # Manual party colors for lines
+  scale_color_manual(values = c("Con" = "#0056A0", "Lab" = "#d50000")) +
+  
+  # Manual party colors for shading
+  scale_fill_manual(values = c("Con" = "#0056A0", "Lab" = "#d50000")) +
+  
+  labs(
+    title = "Net Sentiment Over Time with Governing Party Shaded",
+    x = "Year",
+    y = "Polarity Score (Positive − Negative)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "right")
+```
+
+
+# SOLUTIONS
+
+## Exercise 1
+```{r exercise-1-solution, eval=FALSE}
+
+# Visually inspect your data
+View(manifestos_df)
+
+head(manifestos_df)
+
+str(manifestos_df)
+
+```
+
+
+## Exercise 2
+```{r exercise-2-solution}
+
+# View the first 20 tokens 
+tokens_manifestos[[1]][1:20]
+
+# Original text
+substr(manifestos_df$text[1], 1, 300)  
+
+
+```
+
+
+## Exercise 3
+```{r exercise-3-solution}
+
+# Change the grouping variable to Year
+group_var <- manifestos_df$Year
+
+# Get top 10 features grouped by Year
+freq_by_year <- textstat_frequency(dfm_manifestos, n = 10, groups = group_var)
+
+# let's look at four years of your choice so the plot is more legible
+frequency_df_years <- freq_by_year %>%
+    filter(as.numeric(group) >= 1997) 
+
+# Plot it
+frequency_df_years %>% 
+  ggplot(aes(x = reorder(feature, frequency), y = frequency, fill = group)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() +
+  facet_wrap(~ group, scales = "free_y") +
+  labs(title = "Top 10 Words by Year", x = "Word", y = "Frequency") +
+  theme_minimal()
+
+
+```
+
+## Exercise 4
+```{r exercise-4-solution}
+
+sentiment_df %>% filter(Party %in% c("Con", "Lab")) %>% 
+    ggplot(., aes(x = Year, y = polarity_normalized, color = Party)) +
+    geom_point(alpha = 0.6) +
+    geom_line() + 
+    scale_color_manual(
+        values = c("Con" = "#0056A0", "Lab" = "#d50000")) +
+    labs(
+        title = "Net Sentiment Over Time",
+        x = "Year",
+        y = "Polarity Score (Positive − Negative)"
+      ) +
+    theme_minimal()
+
+
+```
