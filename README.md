@@ -6,13 +6,17 @@ Welcome to our virtual Introduction to Text Analysis in R.
 
 Also, before the workshop, please install these packages: dplyr, ggplot2, quanteda, quanteda.textstats, quanteda.textplots, and quanteda.corpora. You can use the following code: 
 
+```
 install.packages(c("dplyr", "ggplot2", "quanteda", "quanteda.textstats", "quanteda.textplots"))
 
 devtools::install_github("quanteda/quanteda.corpora"). 
+```
 
 If you don't have devtools installed, you'll also need to run this code: 
 
+```
 install.packages("devtools"). 
+```
 
 If you have any issues installing these packages, please submit a consult request using this form at least 3 business days prior to the workshop.
 
