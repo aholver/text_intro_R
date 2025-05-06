@@ -179,7 +179,7 @@ object, which will allow us to work with it more easily.
 
 Have a go and try that yourself.
 
-```{r corpus-creation-exercise}
+```{r corpus-creation-exercise, eval=FALSE}
 
 corpus_manifestos <- 
 
@@ -198,7 +198,7 @@ individual words. We then clean those individual tokens up by:
 -   Stemming (reduces words to their root form, e.g., “running”, “runs”,
     and “ran” become “run”)
 
-```{r corpus-creation-exercise}
+```{r corpus-creation}
 
 corpus_manifestos <- corpus(manifestos_df, text_field = "text")
 
@@ -308,7 +308,8 @@ frequency_df_parties %>%
     coord_flip() +
     facet_wrap(~ group, scales = "free_y") +
     labs(title = "Top 10 Words by Party", x = "Word", y = "Frequency") +
-    theme_minimal()
+    theme_minimal() +
+    scale_fill_manual(values = c("Con" = "#0056A0", "Lab" = "#d50000"))
 
 ```
 
@@ -421,7 +422,10 @@ sentiment_df %>% filter(Party %in% c("Con", "Lab")) %>%
     labs(title = "Sentiment Polarity by Party",
          x = "Party",
          y = "Polarity (Positive - Negative)") +
-    theme_minimal()
+    theme_minimal() +
+    scale_fill_manual(values = c("Con" = "#0056A0", "Lab" = "#d50000"))
+
+
 ```
 
 This is already quite interesting! We can see that the net positivity is
